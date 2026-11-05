@@ -35,13 +35,16 @@ public class DebugMenu
     private const int CollapsedHeight = 44;
 
     private const int Margin = 12;
-    private const int PanelWidth = 224;
+    private const int PanelWidth = 240;
 
     private readonly IntPtr _mainHwnd;
     private readonly RenderingSystem _renderer;
     private readonly IntPtr _font;
     private IntPtr _panel;
     private IntPtr _labelFps;
+    private IntPtr _labelNodes;
+    private IntPtr _labelTris;
+    private IntPtr _labelLods;
     private IntPtr _btnCollapse;
     private bool _collapsed;
     private int _expandedHeight;
@@ -52,6 +55,7 @@ public class DebugMenu
 
     private class CheckboxBinding
     {
+        public string Text;
         public IntPtr Handle;
         public Action<bool> Apply;
     }
@@ -99,37 +103,84 @@ public class DebugMenu
         SetWindowTextW(_labelFps, $"FPS: {fps:0}");
     }
 
+    public void SetStats(int rendered, int total, int culled, int tris, int[] lods)
+    {
+        SetWindowTextW(_labelNodes, $"Nodes: {rendered} / {total} ({culled} culled)");
+        SetWindowTextW(_labelTris, $"Triangles: {tris:N0}");
+        if (lods != null && lods.Length >= 4)
+        {
+            SetWindowTextW(_labelLods, $"LODs: L0:{lods[0]} L1:{lods[1]} L2:{lods[2]} L3:{lods[3]}");
+        }
+    }
+
+    public void UpdateCheckbox(string text, bool isChecked)
+    {
+        foreach (var cb in _checkboxes)
+        {
+            if (cb.Text == text)
+            {
+                SendMessageW(cb.Handle, BM_SETCHECK, isChecked ? (IntPtr)BST_CHECKED : (IntPtr)BST_UNCHECKED, IntPtr.Zero);
+                break;
+            }
+        }
+    }
+
 
     private void CreateControls()
     {
         const int x = 10;
-        const int width = 200;
+        const int width = 216;
         int y = 10;
 
         _labelFps = CreateLabel("FPS: --", x, y, 130);
-        _btnCollapse = CreateButton("\u25B2 Hide", x + 132, y - 2, 70, 22);
+        _btnCollapse = CreateButton("\u25B2 Hide", x + 144, y - 2, 70, 22);
         y += 24;
 
-        AddCheckbox("Frustum Culling", x, ref y, width,
-            _renderer.FrustumCullingEnabled, v => _renderer.FrustumCullingEnabled = v);
-        AddCheckbox("Octree Acceleration", x, ref y, width,
-            _renderer.OctreeAccelerationEnabled, v => _renderer.OctreeAccelerationEnabled = v);
+        _labelNodes = CreateLabel("Nodes: --", x, y, width);
+        _collapsibleHandles.Add(_labelNodes);
+        y += 18;
 
-        AddCheckbox("Shadows", x, ref y, width,
-            _renderer.ShadowsEnabled, v => _renderer.ShadowsEnabled = v);
+        _labelTris = CreateLabel("Triangles: --", x, y, width);
+        _collapsibleHandles.Add(_labelTris);
+        y += 18;
+
+        _labelLods = CreateLabel("LODs: --", x, y, width);
+        _collapsibleHandles.Add(_labelLods);
+        y += 24;
+
+        AddCheckbox("Terrain", x, ref y, width,
+            _renderer.TerrainEnabled, v => _renderer.TerrainEnabled = v);
 
         AddCheckbox("Wireframe", x, ref y, width,
             _renderer.WireframeEnabled, v => _renderer.WireframeEnabled = v);
 
-        AddCheckbox("Particles", x, ref y, width,
-            _renderer.ParticlesEnabled, v => _renderer.ParticlesEnabled = v);
+        AddCheckbox("Frustum Culling", x, ref y, width,
+            _renderer.FrustumCullingEnabled, v => _renderer.FrustumCullingEnabled = v);
 
-        AddCheckbox("Tone Mapping", x, ref y, width,
-            _renderer.ToneMappingEnabled, v => _renderer.ToneMappingEnabled = v);
-        AddCheckbox("Vignette", x, ref y, width,
-            _renderer.VignetteEnabled, v => _renderer.VignetteEnabled = v);
+        AddCheckbox("Freeze Frustum", x, ref y, width,
+            _renderer.FreezeFrustum, v => _renderer.FreezeFrustum = v);
+
+        AddCheckbox("Skirts (Seams)", x, ref y, width,
+            _renderer.SkirtsEnabled, v => _renderer.SkirtsEnabled = v);
+
+        AddCheckbox("Color-code LODs", x, ref y, width,
+            _renderer.ColorCodeLods, v => _renderer.ColorCodeLods = v);
+
+        AddCheckbox("Shadows", x, ref y, width,
+            _renderer.ShadowsEnabled, v => _renderer.ShadowsEnabled = v);
+
+        AddCheckbox("Sponza", x, ref y, width,
+            _renderer.SponzaEnabled, v => _renderer.SponzaEnabled = v);
+
+        AddCheckbox("Cubes", x, ref y, width,
+            _renderer.CubesEnabled, v => _renderer.CubesEnabled = v);
 
         y += 10;
+
+        AddSlider("LOD Distance Scale", x, ref y, width,
+            30, 250, (int)Math.Round(_renderer.LodDistanceScale * 100f),
+            pos => _renderer.LodDistanceScale = pos / 100f,
+            pos => $"LOD Distance: {pos}%");
 
         AddSlider("Exposure", x, ref y, width,
             0, 300, (int)Math.Round(_renderer.Exposure * 100f),
@@ -140,26 +191,6 @@ public class DebugMenu
             0, 300, (int)Math.Round(_renderer.IblIntensity * 100f),
             pos => _renderer.IblIntensity = pos / 100f,
             pos => $"IBL Intensity: {pos / 100f:0.00}");
-
-        AddSlider("Displacement Scale", x, ref y, width,
-            0, 100, (int)Math.Round(_renderer.DisplacementScale * 1000f),
-            pos => _renderer.DisplacementScale = pos / 1000f,
-            pos => $"Displacement: {pos / 1000f:0.000}");
-
-        AddSlider("Tess Min", x, ref y, width,
-            1, 16, (int)Math.Round(_renderer.TessMin),
-            pos => _renderer.TessMin = pos,
-            pos => $"Tess Min: {pos}");
-
-        AddSlider("Tess Max", x, ref y, width,
-            1, 64, (int)Math.Round(_renderer.TessMax),
-            pos => _renderer.TessMax = pos,
-            pos => $"Tess Max: {pos}");
-
-        AddSlider("Cascade Lambda", x, ref y, width,
-            0, 100, (int)Math.Round(_renderer.CascadeLambda * 100f),
-            pos => _renderer.CascadeLambda = pos / 100f,
-            pos => $"Cascade Lambda: {pos / 100f:0.00}");
 
         string[] gbufferModes = { "Final", "Albedo", "Normal", "Position", "Roughness", "Metallic" };
         AddSlider("G-Buffer View", x, ref y, width,
@@ -176,7 +207,7 @@ public class DebugMenu
     {
         int id = _nextControlId++;
         IntPtr hwnd = CreateCheckbox(text, x, y, id, initial, width);
-        _checkboxes.Add(new CheckboxBinding { Handle = hwnd, Apply = apply });
+        _checkboxes.Add(new CheckboxBinding { Text = text, Handle = hwnd, Apply = apply });
         _collapsibleHandles.Add(hwnd);
         y += 26;
     }

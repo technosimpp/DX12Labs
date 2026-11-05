@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!-- World Machine Project File for DX12 Laboratory Work 1: Terrain Visualization -->
+<WorldMachine version="3.0.4" build="3016">
+    <ProjectSettings>
+        <WorldExtents minX="-256" minY="-256" maxX="256" maxY="256" minZ="0" maxZ="80"/>
+        <NormalResolution width="513" height="513"/>
+        <TiledBuild enabled="true" tilesX="2" tilesY="2" tileResolution="257" blendOverlap="1"/>
+    </ProjectSettings>
+    <DeviceNetwork>
+        <Device id="dev_perlin" type="AdvancedPerlin" name="Primary Mountain Generator">
+            <Param name="feature_scale" value="128.0"/>
+            <Param name="octaves" value="6"/>
+            <Param name="persistence" value="0.5"/>
+            <Param name="lacunarity" value="2.0"/>
+            <Param name="steepness" value="1.35"/>
+        </Device>
+        <Device id="dev_ridge" type="RidgeNoise" name="Mountain Ridges">
+            <Param name="feature_scale" value="80.0"/>
+            <Param name="octaves" value="5"/>
+            <Param name="sharpness" value="0.8"/>
+        </Device>
+        <Device id="dev_combiner" type="Combiner" name="Layer Combiner">
+            <Param name="method" value="Add"/>
+            <Param name="ratio" value="0.65"/>
+            <Input name="primary" source="dev_perlin" port="out"/>
+            <Input name="secondary" source="dev_ridge" port="out"/>
+        </Device>
+        <Device id="dev_erosion" type="Erosion" name="Hydraulic and Thermal Erosion">
+            <Param name="duration" value="0.4"/>
+            <Param name="rock_hardness" value="0.55"/>
+            <Param name="sediment_carry" value="0.7"/>
+            <Input name="in" source="dev_combiner" port="out"/>
+        </Device>
+        <Device id="dev_tile_export" type="TiledOutput" name="Tiled Heightmap Export">
+            <Param name="filename_pattern" value="tile_{x}_{y}.png"/>
+            <Param name="format" value="PNG_16bit_Linear"/>
+            <Param name="tilesX" value="2"/>
+            <Param name="tilesY" value="2"/>
+            <Param name="tileResolution" value="257"/>
+            <Input name="heights" source="dev_erosion" port="out"/>
+        </Device>
+        <Device id="dev_full_export" type="HeightOutput" name="Full Heightmap Export">
+            <Param name="filename" value="heightmap.png"/>
+            <Param name="format" value="PNG_16bit_Linear"/>
+            <Input name="heights" source="dev_erosion" port="out"/>
+        </Device>
+    </DeviceNetwork>
+</WorldMachine>

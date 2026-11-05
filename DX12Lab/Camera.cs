@@ -1,15 +1,15 @@
-﻿using System;
+using System;
 using System.Numerics;
 
 namespace DX12Lab;
 
 public class Camera
 {
-    public Vector3 Position = new(-10, 23, 0);
+    public Vector3 Position = new(0, 80, -220);
     public float Yaw = 0f;
-    public float Pitch = 0f;
+    public float Pitch = -0.22f;
 
-    public float MoveSpeed = 10f;
+    public float MoveSpeed = 35f;
     public float LookSpeed = 0.003f;
 
     private int _lastMouseX, _lastMouseY;
@@ -33,12 +33,16 @@ public class Camera
         var forward = GetForward();
         var right = Vector3.Normalize(Vector3.Cross(forward, Vector3.UnitY));
 
-        if (input.IsKeyDown(0x57)) Position += forward * MoveSpeed * dt;
-        if (input.IsKeyDown(0x53)) Position -= forward * MoveSpeed * dt;
-        if (input.IsKeyDown(0x44)) Position += right * MoveSpeed * dt;
-        if (input.IsKeyDown(0x41)) Position -= right * MoveSpeed * dt;
-        if (input.IsKeyDown(0x20)) Position += Vector3.UnitY * MoveSpeed * dt;
-        if (input.IsKeyDown(0x11)) Position -= Vector3.UnitY * MoveSpeed * dt;
+        float speed = MoveSpeed;
+        if (input.IsKeyDown(0x10))
+            speed *= 3.0f;
+
+        if (input.IsKeyDown(0x57)) Position += forward * speed * dt;
+        if (input.IsKeyDown(0x53)) Position -= forward * speed * dt;
+        if (input.IsKeyDown(0x44)) Position += right * speed * dt;
+        if (input.IsKeyDown(0x41)) Position -= right * speed * dt;
+        if (input.IsKeyDown(0x20)) Position += Vector3.UnitY * speed * dt;
+        if (input.IsKeyDown(0x11)) Position -= Vector3.UnitY * speed * dt;
     }
 
     private Vector3 GetForward() => new(

@@ -123,7 +123,7 @@ float DistributionGGX(float3 N, float3 H, float roughness)
 float GeometrySchlickGGX(float NdotV, float roughness)
 {
     float r = roughness + 1.0f;
-    float k = (r * r) / 8.0f; 
+    float k = (r * r) / 8.0f;
     return NdotV / (NdotV * (1.0f - k) + k);
 }
 
@@ -259,6 +259,8 @@ float4 PSMain(VertexOut pin) : SV_TARGET
     float3 prefilteredColor = gPrefilteredEnvMap.SampleLevel(gSampler, R, roughness * maxMip).rgb;
     float2 envBRDF = gBRDFLUT.Sample(gSampler, float2(NdotV, roughness)).rg;
     float3 specularIBL = prefilteredColor * (kS * envBRDF.x + envBRDF.y);
+    if (roughness > 0.8f && metallic < 0.2f)
+        specularIBL = float3(0, 0, 0);
 
     float3 ambient = (kD * diffuseIBL + specularIBL) * IblIntensity;
 
